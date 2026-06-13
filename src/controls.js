@@ -30,7 +30,7 @@ const GROUPS = [
       { key: 'lag', label: 'lag between states', type: 'num', def: 70, min: 10, max: 500, step: 5, unit: 'ms' },
       { key: 'magnitudeModifier', label: 'magnitude (global ×)', type: 'num', def: 1, min: 0, max: 5, step: 0.1 },
       { key: 'magnitude', label: 'magnitude (per state)', type: 'num', def: 1, min: 0, max: 5, step: 0.1, perState: true },
-      { key: 'breadth', label: 'breadth (σ)', type: 'num', def: 20, min: 2, max: 200, step: 2, unit: 'ms', perState: true },
+      { key: 'breadth', label: 'breadth (extent)', type: 'num', def: 50, min: 10, max: 300, step: 10, unit: 'ms', perState: true },
       { key: 'nEvents', label: 'number of events', type: 'int', def: 3, min: 1, max: 50, step: 1 },
       { key: 'jitter', label: 'step jitter (±)', type: 'num', def: 0, min: 0, max: 100, step: 5, unit: 'ms' },
     ],

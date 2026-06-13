@@ -29,7 +29,7 @@ function resolvePerState(globalVal, perState, nStates) {
  *   baseline                      constant added to every state (default 0)
  *   noise        {global, perState[]}   stdev of Gaussian noise
  *   magnitude    {global, perState[]}   reactivation bump height (global is a modifier)
- *   breadth      {global, perState[]}   reactivation bump width (Gaussian sigma, samples)
+ *   breadth      {global, perState[]}   full bump extent in samples; Gaussian truncated at +/-2 sigma
  *   lag                            samples between consecutive states in the sequence
  *   sequence                       array of state indices, e.g. [0,1,2,3,4]
  *   nEvents                        number of replay events (sweeps through the sequence)
@@ -76,7 +76,7 @@ export function generateProbas(params) {
   // centred; trains are equally spaced with the refractory gap respected.
   const seq = sequence.slice();
   const eventSpan = (seq.length - 1) * lag; // samples from first to last bump center
-  const margin = Math.ceil(3 * Math.max(...breadthArr)); // keep bumps inside bounds
+  const margin = Math.ceil(Math.max(...breadthArr) / 2); // half-extent keeps bumps in bounds
   const lo = margin;
   const hi = nSamples - eventSpan - margin;
   const onsets = [];
@@ -100,11 +100,17 @@ export function generateProbas(params) {
     let pos = onset;
     for (let step = 0; step < seq.length; step++) {
       const s = seq[step];
-      const sigma = breadthArr[s];
+      // breadthArr[s] is the full extent of the bump in samples; we truncate the
+      // Gaussian at +/-2 sigma, so half-extent = breadth/2 = 2*sigma and the bump
+      // spans exactly `breadth` ms. Beyond the truncation the value is 0.
+      const extent = breadthArr[s];
+      const halfExtent = extent / 2;
+      const sigma = extent / 4;
       const height = magArr[s] * modifier;
       const c = pos;
-      const halfWin = Math.ceil(4 * sigma);
-      for (let t = Math.max(0, c - halfWin); t < Math.min(nSamples, c + halfWin); t++) {
+      const lo = Math.max(0, Math.ceil(c - halfExtent));
+      const hi = Math.min(nSamples, Math.floor(c + halfExtent) + 1);
+      for (let t = lo; t < hi; t++) {
         probas[t][s] += height * Math.exp(-0.5 * ((t - c) / sigma) ** 2);
       }
       const stepJitter = jitter ? (rng.int(2 * jitter + 1) - jitter) : 0;
