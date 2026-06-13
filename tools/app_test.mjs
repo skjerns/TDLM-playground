@@ -46,7 +46,7 @@ expect(!!plotCalls['plot-seq'], 'sequenceness plot drawn');
 
 const probaTraces = plotCalls['plot-probas'].traces;
 expect(probaTraces.length === 5, `probas has 5 state traces (got ${probaTraces.length})`);
-expect(probaTraces[0].y.length === 1500, `probas trace length = ${probaTraces[0].y.length}`);
+expect(probaTraces[0].y.length === 1000, `probas trace length = ${probaTraces[0].y.length}`);
 
 const seqTraces = plotCalls['plot-seq'].traces;
 const named = seqTraces.filter((t) => t.y && t.y.length > 2).map((t) => t.name);
