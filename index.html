@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TDLM Replay Playground</title>
+  <meta name="description" content="Interactive simulation and evaluation of neural replay with Temporally Delayed Linear Modelling (TDLM)." />
+  <link rel="stylesheet" href="styles.css" />
+  <!-- vendored libraries: load as plain scripts so they set globals before modules run -->
+  <script src="vendor/ml-matrix.umd.js"></script>
+  <script src="vendor/plotly.min.js" charset="utf-8"></script>
+</head>
+<body>
+  <header class="app-header">
+    <h1>TDLM Replay Playground</h1>
+    <p class="subtitle">
+      Simulate decoded reactivation and evaluate it with
+      <a href="https://elifesciences.org/articles/66917" target="_blank" rel="noopener">TDLM</a>
+      (<a href="https://github.com/skjerns/TDLM-Python" target="_blank" rel="noopener">TDLM-Python</a>).
+      Everything runs in your browser.
+    </p>
+  </header>
+
+  <main class="app-main">
+    <aside id="controls" class="sidebar" aria-label="parameters"></aside>
+
+    <div class="plots">
+      <div class="plot-card"><div id="plot-probas" class="plot"></div></div>
+      <div class="plot-card"><div id="plot-seq" class="plot"></div></div>
+      <div id="status" class="status">initialising…</div>
+      <details class="explainer">
+        <summary>What am I looking at?</summary>
+        <p>
+          The <strong>left panel</strong> shows the simulated classifier
+          probabilities — one trace per state. A replay <em>event</em> is a
+          sequence of Gaussian "reactivation" bumps, each lagged by the chosen
+          time from the previous state (dotted lines mark event onsets).
+        </p>
+        <p>
+          The <strong>right panel</strong> shows TDLM sequenceness vs. time lag.
+          <em>Forward</em> measures evidence for replay in the sequence order,
+          <em>backward</em> the reverse, and <em>difference</em> their contrast.
+          Dashed/dash-dot lines are permutation significance thresholds; with
+          rescaling on, the permutation-max threshold sits at ±1, so a curve
+          poking above ±1 is significant at p&lt;.05. A clean forward replay
+          shows a forward peak at the lag you set between states.
+        </p>
+        <p>
+          Turn on <strong>alpha correction</strong> to add time-shifted
+          confound regressors (as in Liu et al., 2021) that suppress spurious
+          sequenceness from oscillations at the given frequency.
+        </p>
+      </details>
+    </div>
+  </main>
+
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>

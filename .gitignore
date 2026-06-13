@@ -1,0 +1,9 @@
+# generated test artifacts (regenerate with tools/gen_reference.py)
+tools/reference.json
+# CJS copy of the vendored lib, only needed for Node tests
+tools/ml-matrix.cjs
+
+# OS / editor
+.DS_Store
+*.swp
+node_modules/
