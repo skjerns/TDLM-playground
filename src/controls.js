@@ -18,7 +18,7 @@ const GROUPS = [
     items: [
       { key: 'nStates', label: 'number of states', type: 'int', def: 5, min: 2, max: 12, step: 1, rebuild: true, noslider: true },
       { key: 'sfreq', label: 'sampling rate', type: 'num', def: 100, min: 10, max: 1000, step: 10, suffix: 'Hz', retime: true, noslider: true },
-      { key: 'duration', label: 'duration', type: 'num', def: 15, min: 2, max: 60, step: 1, suffix: 's', noslider: true },
+      { key: 'duration', label: 'duration', type: 'num', def: 10, min: 2, max: 60, step: 1, suffix: 's', noslider: true },
       { key: 'noise', label: 'noise level (σ)', type: 'num', def: 0.15, min: 0, max: 2, step: 0.01, perState: true },
       { key: 'baseline', label: 'baseline offset', type: 'num', def: 0, min: 0, max: 1, step: 0.05 },
     ],
