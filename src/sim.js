@@ -31,7 +31,9 @@ function resolvePerState(globalVal, perState, nStates) {
  *   magnitude    {global, perState[]}   reactivation bump height (global is a modifier)
  *   breadth      {global, perState[]}   full bump extent in samples; Gaussian truncated at +/-2 sigma
  *   lag                            samples between consecutive states in the sequence
- *   sequence                       array of state indices, e.g. [0,1,2,3,4]
+ *   sequence                       hypothesised order -> tf, e.g. [0,1,2,3,4]
+ *   reactivationOrder              actual insertion order (defaults to sequence);
+ *                                  differs for backward/scrambled replay examples
  *   nEvents                        number of replay events (sweeps through the sequence)
  *   jitter                         +/- samples of random jitter per step (0 = off)
  *   oscillations  array of additive sinusoidal components, each
@@ -50,6 +52,7 @@ export function generateProbas(params) {
     baseline = 0,
     noise, magnitude, breadth,
     lag, sequence, nEvents,
+    reactivationOrder = null, // actual insertion order; defaults to `sequence`
     jitter = 0,
     oscillations = [],
     clipZero = true, clipOne = true, normalize = false,
@@ -75,7 +78,12 @@ export function generateProbas(params) {
   // parameters (noise, magnitude, ...) never moves the replay. A single event is
   // centred; trains are equally spaced with the refractory gap respected.
   const seq = sequence.slice();
-  const eventSpan = (seq.length - 1) * lag; // samples from first to last bump center
+  // the order reactivations are actually inserted in (may differ from the
+  // hypothesised `sequence` that builds tf — e.g. backward or scrambled replay)
+  const insertSeq = (Array.isArray(reactivationOrder) && reactivationOrder.length >= 2)
+    ? reactivationOrder.slice()
+    : seq;
+  const eventSpan = (insertSeq.length - 1) * lag; // samples from first to last bump center
   const margin = Math.ceil(Math.max(...breadthArr) / 2); // half-extent keeps bumps in bounds
   const lo = margin;
   const hi = nSamples - eventSpan - margin;
@@ -98,8 +106,8 @@ export function generateProbas(params) {
   const modifier = params.magnitudeModifier ?? 1;
   for (const onset of onsets) {
     let pos = onset;
-    for (let step = 0; step < seq.length; step++) {
-      const s = seq[step];
+    for (let step = 0; step < insertSeq.length; step++) {
+      const s = insertSeq[step];
       // breadthArr[s] is the full extent of the bump in samples; we truncate the
       // Gaussian at +/-2 sigma, so half-extent = breadth/2 = 2*sigma and the bump
       // spans exactly `breadth` ms. Beyond the truncation the value is 0.

@@ -78,5 +78,26 @@ sfreqEl.dispatch('input');
 const lagEl = container.find((e) => e.id === 'ctl-lag');
 expect(Number(lagEl.step) === 5, `lag step retimed to 1000/200 = 5ms (got ${lagEl.step})`);
 
+// 5) presets: backward (B) sets a reversed reactivation order != sequence
+const presetEl = container.find((e) => e.tag === 'select' && e.id === 'ctl-preset');
+presetEl.value = 'B';
+presetEl.dispatch('change');
+p = controls.getParams();
+expect(JSON.stringify(p.simParams.sequence) === '[0,1,2,3,4]', `B: tf sequence forward (${JSON.stringify(p.simParams.sequence)})`);
+expect(JSON.stringify(p.simParams.reactivationOrder) === '[4,3,2,1,0]', `B: reactivation order reversed (${JSON.stringify(p.simParams.reactivationOrder)})`);
+expect(p.simParams.oscillations.length === 0, 'B: preset cleared oscillations');
+
+// 6) preset D sets per-state magnitude with zeros (missing items)
+presetEl.value = 'D';
+presetEl.dispatch('change');
+p = controls.getParams();
+expect(JSON.stringify(p.simParams.magnitude.perState) === '[1,0,1,0,1]', `D: per-state magnitude (${JSON.stringify(p.simParams.magnitude.perState)})`);
+
+// 7) a manual edit reverts the dropdown to custom
+const noiseEl = container.find((e) => e.id === 'ctl-noise');
+noiseEl.value = '0.3';
+noiseEl.dispatch('input');
+expect(presetEl.value === '', `manual edit reverts preset to custom (got "${presetEl.value}")`);
+
 console.log('\n' + (fail ? `${fail} CHECK(S) FAILED` : 'DOM TEST PASSED'));
 process.exit(fail ? 1 : 0);

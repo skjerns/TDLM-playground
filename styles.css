@@ -80,6 +80,22 @@ body {
   font-size: 13px;
 }
 .ctl-row input[type="text"] { width: 110px; }
+
+.ctl-select {
+  width: 100%;
+  padding: 5px 6px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 13px;
+  background: var(--panel);
+}
+.ctl-preset-desc {
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.4;
+  margin-top: 5px;
+  min-height: 1em;
+}
 .ctl-check { display: flex; align-items: center; gap: 4px; cursor: pointer; }
 
 /* slider control: label + readout on top, full-width slider below */

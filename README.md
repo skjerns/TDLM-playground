@@ -19,6 +19,15 @@ Everything runs client-side — no server, no build step. Just static files.
   vs. time lag, with permutation-max (p<.05) and 95% thresholds. Rescaling puts
   the perm-max threshold at ±1.
 
+## Presets
+
+A **Presets (Fig. 6)** dropdown reproduces the contrived TDLM examples from
+Kern et al. Figure 6: A) forward replay, B) backward replay, C) variable lag,
+D) missing items, E) wrong order, F) rapid overlap at a high sample rate. The
+hypothesised transition order (which builds `tf`) is decoupled from the actual
+**reactivation order**, so backward/scrambled replay can be simulated against a
+fixed forward `tf`. Editing any control reverts the dropdown to "custom".
+
 ## Parameters
 
 Most parameters can be set **globally or per state** (the `⋯` button reveals a

@@ -26,7 +26,8 @@ const GROUPS = [
   {
     title: 'Reactivation',
     items: [
-      { key: 'sequence', label: 'sequence order', type: 'text', def: '0,1,2,3,4' },
+      { key: 'sequence', label: 'sequence order (tf)', type: 'text', def: '0,1,2,3,4' },
+      { key: 'reactivationOrder', label: 'reactivation order', type: 'text', def: '' },
       { key: 'lag', label: 'lag between states', type: 'num', def: 70, min: 10, max: 500, step: 5, unit: 'ms' },
       { key: 'magnitudeModifier', label: 'magnitude (global ×)', type: 'num', def: 1, min: 0, max: 5, step: 0.1 },
       { key: 'magnitude', label: 'magnitude (per state)', type: 'num', def: 1, min: 0, max: 5, step: 0.1, perState: true },
@@ -60,15 +61,64 @@ const GROUPS = [
   },
 ];
 
+// Presets reproducing Kern et al. Figure 6 (left, "TDLM examples"). Each is a
+// flat map of control keys -> values (units as shown in the UI: ms, Hz, s),
+// optionally with per-state overrides. They are applied on top of defaults.
+const FIG6_BASE = {
+  nStates: 5, sfreq: 100, duration: 10, noise: 0.08, baseline: 0,
+  lag: 70, magnitudeModifier: 1, magnitude: 1, breadth: 40, nEvents: 12,
+  jitter: 0, sequence: '0,1,2,3,4', reactivationOrder: '', maxLag: 300,
+};
+const PRESETS = [
+  {
+    id: 'A', label: 'A · Forward replay (constant lag)',
+    desc: 'Constant inter-item lag → sharp forward peak at that lag.',
+    values: { ...FIG6_BASE },
+  },
+  {
+    id: 'B', label: 'B · Backward replay',
+    desc: 'Reactivations run in reverse of the hypothesised order → backward peak.',
+    values: { ...FIG6_BASE, reactivationOrder: '4,3,2,1,0' },
+  },
+  {
+    id: 'C', label: 'C · Variable lag',
+    desc: 'Inter-item lag varies (jitter) → forward peak smears across lags.',
+    values: { ...FIG6_BASE, jitter: 60 },
+  },
+  {
+    id: 'D', label: 'D · Missing items',
+    desc: 'Some items never reactivate → forward & backward near chance.',
+    values: { ...FIG6_BASE },
+    perState: { magnitude: [1, 0, 1, 0, 1] },
+  },
+  {
+    id: 'E', label: 'E · Wrong order',
+    desc: 'Reactivations occur in a scrambled order → no clear peak.',
+    values: { ...FIG6_BASE, reactivationOrder: '0,3,1,4,2' },
+  },
+  {
+    id: 'F', label: 'F · Rapid overlap (high sample rate)',
+    desc: 'Very rapid, heavily overlapping reactivations at high sfreq → no clear lag peak.',
+    values: { ...FIG6_BASE, sfreq: 250, lag: 20, breadth: 200, nEvents: 20 },
+  },
+];
+
 export function initControls(container, onChange) {
-  const inputs = {};        // key -> main input element
+  const inputs = {};        // key -> main input element (readout for numeric)
+  const sliders = {};       // key -> range element (numeric, slider variant only)
   const perStateWrap = {};  // key -> { container, inputs: [] }
   const msControls = [];    // numeric controls whose unit is 'ms' (sample-grid stepped)
   const oscComponents = []; // dynamic list of oscillation components
   let nStates = 5;
 
-  const fire = () => onChange();
-  const debouncedFire = debounce(fire, 150);
+  let applyingPreset = false; // true while a preset is being applied
+  let presetSelect = null;    // the <select>, set in buildPresetSection
+  // a manual edit (not a preset application) reverts the dropdown to "custom";
+  // this happens immediately, while the recompute itself is debounced
+  const markCustom = () => { if (!applyingPreset && presetSelect) presetSelect.value = ''; };
+  const debouncedOnChange = debounce(onChange, 150);
+  const fire = () => { markCustom(); onChange(); };
+  const debouncedFire = () => { markCustom(); debouncedOnChange(); };
 
   function makeInput(item) {
     const id = `ctl-${item.key}`;
@@ -88,6 +138,7 @@ export function initControls(container, onChange) {
       const row = $('div', { className: 'ctl-row' });
       row.append($('label', { htmlFor: id, className: 'ctl-label', textContent: item.label }));
       const input = $('input', { type: 'text', id, value: item.def });
+      if (item.key === 'reactivationOrder') input.placeholder = '= sequence order';
       input.addEventListener('input', debouncedFire);
       inputs[item.key] = input;
       row.append(input);
@@ -122,6 +173,7 @@ export function initControls(container, onChange) {
       min: item.min, max: item.max, step: item.step,
     });
     if (slider) {
+      sliders[item.key] = slider;
       slider.addEventListener('input', () => { readout.value = slider.value; onChangeBoth(); });
       readout.addEventListener('input', () => { slider.value = readout.value; onChangeBoth(); });
       if (item.unit === 'ms') msControls.push({ slider, readout, item });
@@ -316,6 +368,29 @@ export function initControls(container, onChange) {
     return section;
   }
 
+  // preset selector (Figure 6 examples) at the very top
+  function buildPresetSection() {
+    const section = $('section', { className: 'ctl-group' });
+    section.append($('h3', { className: 'ctl-group-title', textContent: 'Presets (Fig. 6)' }));
+    const body = $('div', { className: 'ctl-group-body' });
+    const row = $('div', { className: 'ctl-row' });
+    const select = $('select', { className: 'ctl-select', id: 'ctl-preset' });
+    presetSelect = select;
+    select.append($('option', { value: '', textContent: '— custom —' }));
+    for (const p of PRESETS) select.append($('option', { value: p.id, textContent: p.label }));
+    const desc = $('div', { className: 'ctl-preset-desc' });
+    select.addEventListener('change', () => {
+      const p = PRESETS.find((x) => x.id === select.value);
+      desc.textContent = p ? p.desc : '';
+      if (p) applyPreset(p.values, p.perState);
+    });
+    row.append(select);
+    body.append(row, desc);
+    section.append(body);
+    return section;
+  }
+  container.append(buildPresetSection());
+
   // build DOM
   for (const group of GROUPS) {
     const section = $('section', { className: 'ctl-group' });
@@ -352,6 +427,7 @@ export function initControls(container, onChange) {
     for (const g of GROUPS) for (const it of g.items) {
       if (it.type === 'check') inputs[it.key].checked = it.def;
       else inputs[it.key].value = it.def;
+      if (sliders[it.key]) sliders[it.key].value = it.def;
     }
     seedInput.value = 42;
     for (const key of Object.keys(perStateWrap))
@@ -359,6 +435,38 @@ export function initControls(container, onChange) {
     // clear all oscillation components
     oscComponents.splice(0).forEach((c) => c.el.remove());
     oscSeq = 0;
+  }
+
+  // Apply a preset: a flat map of control keys -> values, plus optional
+  // `perState` overrides {key: [v0,v1,...]}. Resets to defaults first, sets the
+  // state count (which resizes per-state grids) before other values, then fires.
+  function applyPreset(values, perState) {
+    applyingPreset = true;
+    resetDefaults();
+    const setOne = (k, v) => {
+      if (!inputs[k]) return;
+      if (inputs[k].type === 'checkbox') inputs[k].checked = !!v;
+      else inputs[k].value = v;
+      if (sliders[k]) sliders[k].value = v;
+    };
+    // state count + sampling rate first: they drive grid size and ms stepping
+    if (values.nStates != null) setOne('nStates', values.nStates);
+    if (values.sfreq != null) setOne('sfreq', values.sfreq);
+    rebuildPerState(); // resize grids, regenerate sequence (overridden below), retime
+    // everything else (including sequence / reactivationOrder text fields)
+    for (const [k, v] of Object.entries(values)) {
+      if (k === 'nStates' || k === 'sfreq') continue;
+      setOne(k, v);
+    }
+    if (perState) {
+      for (const [k, arr] of Object.entries(perState)) {
+        const ps = perStateWrap[k];
+        if (!ps) continue;
+        arr.forEach((v, i) => { if (ps.inputs[i]) ps.inputs[i].value = (v == null ? '' : v); });
+      }
+    }
+    fire();
+    applyingPreset = false;
   }
 
   // --- read widgets into structured params ---
@@ -382,10 +490,15 @@ export function initControls(container, onChange) {
     const ns = clampInt(val('nStates'), 2, 12, 5);
     const nSamples = Math.round(num('duration') * sfreq);
 
-    let sequence = String(val('sequence'))
+    const parseOrder = (s) => String(s)
       .split(/[\s,]+/).filter((x) => x !== '').map((x) => parseInt(x, 10))
       .filter((x) => Number.isFinite(x) && x >= 0 && x < ns);
+
+    let sequence = parseOrder(val('sequence'));
     if (sequence.length < 2) sequence = Array.from({ length: ns }, (_, i) => i);
+
+    const ro = parseOrder(val('reactivationOrder'));
+    const reactivationOrder = ro.length >= 2 ? ro : null; // blank => use sequence
 
     const simParams = {
       nStates: ns, nSamples, sfreq,
@@ -396,6 +509,7 @@ export function initControls(container, onChange) {
       breadth: { global: msToSamp(val('breadth'), sfreq), perState: perStateArr('breadth', sfreq, true) },
       lag: msToSamp(val('lag'), sfreq),
       sequence,
+      reactivationOrder,
       nEvents: clampInt(val('nEvents'), 1, 50, 1),
       jitter: Math.round((num('jitter') / 1000) * sfreq), // ms -> samples (0 -> 0)
       oscillations: oscComponents.map((c) => c.read()),
